@@ -1,0 +1,33 @@
+{
+  "name": "tictactoe",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "runner",
+    "dev": "concurrently \"npm run dev:runner\" \"npm run dev:frontend\"",
+    "dev:runner": "runner --frontend-url localhost:3000",
+    "dev:frontend": "cd frontend && BROWSER=none npm start",
+    "lint": "eslint . --ignore-path .gitignore --ext .js",
+    "lint:fix": "eslint . --ignore-path .gitignore --ext .js --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/turnbasedgames/tictactoe.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/turnbasedgames/tictactoe/issues"
+  },
+  "homepage": "https://github.com/turnbasedgames/tictactoe#readme",
+  "dependencies": {
+    "@urturn/runner": "0.0.1-dev6"
+  },
+  "devDependencies": {
+    "concurrently": "^7.1.0",
+    "eslint": "^8.14.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.26.0"
+  }
+}
