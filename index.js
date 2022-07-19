@@ -5,47 +5,15 @@ const Status = Object.freeze({
   EndGame: 'endGame',
 });
 
-function getPlrMark(player, plrs) {
+function getPlrMark(player, plrs, king) {
+  let piece;
   if (player.id === plrs[0].id) {
-    return 'X';
-  }
-  return 'O';
-}
-
-function getPlrFromMark(mark, plrs) {
-  return mark === 'X' ? plrs[0] : plrs[1];
-}
-
-function isWinningSequence(arr) {
-  return arr[0] != null && arr[0] === arr[1] && arr[1] === arr[2];
-}
-
-function isEndGame(board, plrs) {
-  // check if there is a winner
-  for (let i = 0; i < board.length; i += 1) {
-    const row = board[i];
-    const col = [board[0][i], board[1][i], board[2][i]];
-
-    if (isWinningSequence(row)) {
-      return [true, getPlrFromMark(row[0], plrs)];
-    } if (isWinningSequence(col)) {
-      return [true, getPlrFromMark(col[0], plrs)];
-    }
+    piece = king ? '11' : '1';
+    return piece;
   }
 
-  const d1 = [board[0][0], board[1][1], board[2][2]];
-  const d2 = [board[0][2], board[1][1], board[2][0]];
-  if (isWinningSequence(d1)) {
-    return [true, getPlrFromMark(d1[0], plrs)];
-  } if (isWinningSequence(d2)) {
-    return [true, getPlrFromMark(d2[0], plrs)];
-  }
-
-  // check for tie
-  if (board.some((row) => row.some((mark) => mark === null))) {
-    return [false, null];
-  }
-  return [true, null];
+  piece = king ? '22' : '2';
+  return piece;
 }
 
 /**
@@ -84,10 +52,17 @@ function onRoomStart() {
     state: {
       status: Status.PreGame,
       board: [
-        [null, null, null],
-        [null, null, null],
-        [null, null, null],
+        [null, '2', null, '2', null, '2', null, '2'],
+        ['2', null, '2', null, '2', null, '2', null],
+        [null, '2', null, '2', null, '2', null, '2'],
+        [null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null],
+        ['1', null, '1', null, '1', null, '1', null],
+        [null, '1', null, '1', null, '1', null, '1'],
+        ['1', null, '1', null, '1', null, '1', null],
       ],
+      plrOneCounter: 12,
+      plrTwoCounter: 12,
       winner: null, // null means tie if game is finished, otherwise set to the plr that won
     },
   };
@@ -134,33 +109,61 @@ function onPlayerJoin(player, boardGame) {
  */
 function onPlayerMove(player, move, boardGame) {
   const { state, players } = boardGame;
-  const { board, plrToMoveIndex } = state;
+  const { board, plrToMoveIndex, plrOneCounter, plrTwoCounter } = state;
 
   // VALIDATIONS
   // boardgame must be in the game
-  const { x, y } = move;
   if (state.status !== Status.InGame) {
     throw new Error("game is not in progress, can't make move!");
   }
+
   if (players[plrToMoveIndex].id !== player.id) {
-    throw new Error(`Its not this player's turn: ${player.username}`);
-  }
-  if (board[x][y] !== null) {
-    throw new Error(`Invalid move, someone already marked here: ${x},${y}`);
+    throw new Error(`It is not this player's turn: ${player.username}`);
   }
 
-  const plrMark = getPlrMark(player, players);
-  board[x][y] = plrMark;
+  const { currentLoc, nextLoc, capture, switchPlayer } = move;
 
-  // Check if game is over
-  const [isEnd, winner] = isEndGame(board, players);
-  if (isEnd) {
+  if (switchPlayer === true) {
+    state.plrToMoveIndex = plrToMoveIndex === 0 ? 1 : 0;
+    return { state };
+  }
+
+  const isKing = (board[currentLoc.x][currentLoc.y] === '11' || board[currentLoc.x][currentLoc.y] === '22');
+  const shouldMakeKing = ((state.plrToMoveIndex === 0 && nextLoc.x === 0) || (state.plrToMoveIndex === 1 && nextLoc.x === 7)) ? true : false;
+
+  // backend should have validation logic for what the frontend is doing
+  // to prevent directly hitting the API and corrupting the game
+
+  board[currentLoc.x][currentLoc.y] = null;
+  if (capture) {
+    board[capture.x][capture.y] = null;
+    if (state.plrToMoveIndex === 0) {
+      state.plrTwoCounter = plrTwoCounter - 1;
+    } else {
+      state.plrOneCounter = plrOneCounter - 1;
+    }
+  }
+
+  const king = isKing || shouldMakeKing;
+
+  const plrMark = getPlrMark(player, players, king);
+
+  // check if player should be king or not
+  board[nextLoc.x][nextLoc.y] = plrMark;
+
+  if (state.plrOneCounter === 0) {
     state.status = Status.EndGame;
-    state.winner = winner;
+    state.winner = plrs[1];
     return { state, finished: true };
   }
 
-  state.plrToMoveIndex = plrToMoveIndex === 0 ? 1 : 0;
+  if (state.plrTwoCounter === 0) {
+    state.status = Status.EndGame;
+    state.winner = plrs[0];
+    return { state, finished: true };
+  }
+  // Check if game is over
+
   return { state };
 }
 
