@@ -6,10 +6,10 @@ import {
 import client, { events } from '@urturn/client';
 import theme from './theme';
 
-const typeOfMoves = {
+const typeOfMoves = Object.freeze({
   JUMP: 'jump',
   REGULAR: 'regular',
-};
+});
 
 // prevent rerendering tictactoe row and entries that are the same value
 const getRowKey = (row, rowNum) => `${rowNum}-${row.join('-')}`;
@@ -36,8 +36,6 @@ const getStatusMsg = ({
   return 'Error: You should never see this. Contact developers!';
 };
 
-// We have to map player index 0 to 1 or 11, and player index 1 to 2 or 22
-
 function App() {
   const [boardGame, setBoardGame] = useState(client.getBoardGame() || {});
 
@@ -62,6 +60,7 @@ function App() {
       status,
       winner,
       plrToMoveIndex,
+      moveDetails,
     } = {
       board: [
         [null, '2', null, '2', null, '2', null, '2'],
@@ -100,9 +99,9 @@ function App() {
   }
 
   function getJumpCondition(possPieceRow, possPieceCol) {
-    const jumpCondition = plrToMoveIndex === 0 ?
-    (board[possPieceRow][possPieceCol] === '2' || board[possPieceRow][possPieceCol] === '22') :
-    (board[possPieceRow][possPieceCol] === '1' || board[possPieceRow][possPieceCol] === '11');
+    const jumpCondition = plrToMoveIndex === 0
+      ? (board[possPieceRow][possPieceCol] === '2' || board[possPieceRow][possPieceCol] === '22')
+      : (board[possPieceRow][possPieceCol] === '1' || board[possPieceRow][possPieceCol] === '11');
 
     return jumpCondition;
   }
@@ -272,13 +271,6 @@ function App() {
       possLoc = `${possLoc}`;
     }
 
-    console.log('Player index is: ', plrToMoveIndex);
-    console.log('The position location is: ', possLoc);
-    console.log('The type of possLoc is: ', typeof possLoc);
-
-    console.log('First condition is true: ', plrToMoveIndex === 0);
-    console.log('Second condition is true: ', (possLoc !== '1' && possLoc !== '11'));
-
     if (plrToMoveIndex === 0 && (possLoc !== '1'
       && possLoc !== '11')) {
       setRecentErrorMsg('Illegal move/location');
@@ -315,13 +307,10 @@ function App() {
     // Those indices have to be empty and opponent piece
     // has to be in rowNum + 1, colNum + 1
     // and rowNum + 1, colNum - 1 respectively
-    // console.log('determining possible jump moves');
     const jumpMoves = determinePossibleJumpMoves(rowNum, colNum);
-    console.log('The jump moves are: ', jumpMoves);
     possibleMoves = possibleMoves.concat(jumpMoves);
 
     const regularMoves = determinePossibleRegularMoves(rowNum, colNum);
-    console.log('The regular moves are: ', regularMoves);
     possibleMoves = possibleMoves.concat(regularMoves);
 
     setMoveInfo({
@@ -405,21 +394,23 @@ function App() {
                             // if the type of move was a jump, determine more possible jumps
                             // and if there are more player can only jump
                             // if not move player index to other player
-                            if (typeOfMove === typeOfMoves.JUMP) {
-                              await continuousJumpHelper(nextLoc.x, nextLoc.y);
-                            } else {
-                              // switch player
+                            if (error) {
+                              setRecentErrorMsg(error.message);
+                            }
+                            if (typeOfMove === typeOfMoves.REGULAR) {
                               const err = await switchPlayer();
                               if (err) {
                                 setRecentErrorMsg(err.message);
                               }
-                            }
-                            if (error) {
-                              setRecentErrorMsg(error.message);
+                            } else {
+                              await continuousJumpHelper(nextLoc.x, nextLoc.y);
                             }
                           } else {
                             determinePossibleMoves(rowNum, colNum);
                           }
+                        } else if (moveDetails.moveType === typeOfMoves.JUMP) {
+                          const { pieceLocation } = moveDetails;
+                          await continuousJumpHelper(pieceLocation.x, pieceLocation.y);
                         } else {
                           determinePossibleMoves(rowNum, colNum);
                         }

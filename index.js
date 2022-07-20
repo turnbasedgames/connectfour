@@ -5,6 +5,11 @@ const Status = Object.freeze({
   EndGame: 'endGame',
 });
 
+const Move = Object.freeze({
+  JUMP: 'jump',
+  REGULAR: 'regular',
+});
+
 function getPlrMark(player, plrs, king) {
   let piece;
   if (player.id === plrs[0].id) {
@@ -61,6 +66,7 @@ function onRoomStart() {
         [null, '1', null, '1', null, '1', null, '1'],
         ['1', null, '1', null, '1', null, '1', null],
       ],
+      moveDetails: {},
       plrOneCounter: 12,
       plrTwoCounter: 12,
       winner: null, // null means tie if game is finished, otherwise set to the plr that won
@@ -124,6 +130,7 @@ function onPlayerMove(player, move, boardGame) {
   const { currentLoc, nextLoc, capture, switchPlayer } = move;
 
   if (switchPlayer === true) {
+    state.moveDetails = {};
     state.plrToMoveIndex = plrToMoveIndex === 0 ? 1 : 0;
     return { state };
   }
@@ -133,10 +140,14 @@ function onPlayerMove(player, move, boardGame) {
 
   // backend should have validation logic for what the frontend is doing
   // to prevent directly hitting the API and corrupting the game
+  let moveInfo = {
+    moveType: Move.REGULAR,
+  };
 
   board[currentLoc.x][currentLoc.y] = null;
   if (capture) {
     board[capture.x][capture.y] = null;
+    moveInfo.moveType = Move.JUMP;
     if (state.plrToMoveIndex === 0) {
       state.plrTwoCounter = plrTwoCounter - 1;
     } else {
@@ -150,6 +161,9 @@ function onPlayerMove(player, move, boardGame) {
 
   // check if player should be king or not
   board[nextLoc.x][nextLoc.y] = plrMark;
+  moveInfo.pieceLocation = { x: nextLoc.x, y: nextLoc.y };
+
+  state.moveDetails = moveInfo;
 
   if (state.plrOneCounter === 0) {
     state.status = Status.EndGame;
