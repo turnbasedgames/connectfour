@@ -358,6 +358,7 @@ function App() {
                       }
                     });
                   }
+                  const bgColor = ((rowNum + colNum) % 2) ? 'black' : 'red';
                   const thisStack = (
                     <Stack
                       key={getStackKey(rowNum, colNum, val)}
@@ -369,6 +370,7 @@ function App() {
                         borderColor,
                         height: '70px',
                         width: '70px',
+                        backgroundColor: bgColor,
                       }}
                       onClick={async (event) => {
                         event.preventDefault();
