@@ -119,6 +119,10 @@ function onPlayerMove(player, move, boardGame) {
 
   // VALIDATIONS
   // boardgame must be in the game
+  if (state.status === Status.EndGame) {
+    return { state };
+  }
+
   if (state.status !== Status.InGame) {
     throw new Error("game is not in progress, can't make move!");
   }
@@ -167,13 +171,13 @@ function onPlayerMove(player, move, boardGame) {
 
   if (state.plrOneCounter === 0) {
     state.status = Status.EndGame;
-    state.winner = plrs[1];
+    state.winner = players[1];
     return { state, finished: true };
   }
 
   if (state.plrTwoCounter === 0) {
     state.status = Status.EndGame;
-    state.winner = plrs[0];
+    state.winner = players[0];
     return { state, finished: true };
   }
   // Check if game is over

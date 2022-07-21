@@ -27,7 +27,6 @@ const getStatusMsg = ({
     if (winner) {
       return `${winner.username} won the game!`;
     }
-    return "It's a tie!";
   } if (status === 'preGame') {
     return 'Waiting on another player...';
   } if (status === 'inGame') {
@@ -153,7 +152,7 @@ function App() {
     return moves;
   }
 
-  function determinePossibleJumpMoves(rowNum, colNum) {
+  function determinePossibleJumpMoves(rowNum, colNum, isKing) {
     let possLoc = board[rowNum][colNum];
     if (typeof possLoc === 'number') {
       possLoc = `${possLoc}`;
@@ -162,7 +161,7 @@ function App() {
     let possibleMoves = [];
     if (plrToMoveIndex === 0) {
       const jumpMovesUpward = determinePossibleJumpMovesHelper(rowNum, colNum, true);
-      if (possLoc === '11') {
+      if (isKing) {
         const jumpMovesDownward = determinePossibleJumpMovesHelper(rowNum, colNum, false);
         possibleMoves = possibleMoves.concat(jumpMovesDownward);
       }
@@ -172,7 +171,7 @@ function App() {
 
     if (plrToMoveIndex === 1) {
       const jumpMovesDownward = determinePossibleJumpMovesHelper(rowNum, colNum, false);
-      if (possLoc === '22') {
+      if (isKing) {
         const jumpMovesUpward = determinePossibleJumpMovesHelper(rowNum, colNum, true);
         possibleMoves = possibleMoves.concat(jumpMovesUpward);
       }
@@ -183,8 +182,8 @@ function App() {
     return possibleMoves;
   }
 
-  async function continuousJumpHelper(rowNum, colNum) {
-    const moves = determinePossibleJumpMoves(rowNum, colNum);
+  async function continuousJumpHelper(rowNum, colNum, isKing) {
+    const moves = determinePossibleJumpMoves(rowNum, colNum, isKing);
 
     if (moves.length <= 0) {
       const err = await switchPlayer();
@@ -195,6 +194,7 @@ function App() {
       setMoveInfo({
         possibleMoves: moves,
         selectedPieceInfo: {
+          isKing,
           x: rowNum,
           y: colNum,
         },
@@ -232,7 +232,7 @@ function App() {
     return possMoves;
   }
 
-  function determinePossibleRegularMoves(rowNum, colNum) {
+  function determinePossibleRegularMoves(rowNum, colNum, isKing) {
     let possibleMoves = [];
     let possLoc = board[rowNum][colNum];
     if (typeof possLoc === 'number') {
@@ -241,7 +241,7 @@ function App() {
 
     if (plrToMoveIndex === 0) {
       const upwardMoves = determinePossibleRegularMovesHelper(rowNum, colNum, true);
-      if (possLoc === '11') {
+      if (isKing) {
         const downwardMoves = determinePossibleRegularMovesHelper(rowNum, colNum, false);
         possibleMoves = possibleMoves.concat(downwardMoves);
       }
@@ -251,7 +251,7 @@ function App() {
 
     if (plrToMoveIndex === 1) {
       const downwardMoves = determinePossibleRegularMovesHelper(rowNum, colNum, false);
-      if (possLoc === '22') {
+      if (isKing) {
         const upwardMoves = determinePossibleRegularMovesHelper(rowNum, colNum, true);
         possibleMoves = possibleMoves.concat(upwardMoves);
       }
@@ -267,6 +267,8 @@ function App() {
     // if piece was selected determine the moves else return
     // from this function without setting anything
     let possLoc = board[rowNum][colNum];
+    const isKing = (possLoc === '11' || possLoc === '22');
+
     if (typeof possLoc === 'number') {
       possLoc = `${possLoc}`;
     }
@@ -307,15 +309,16 @@ function App() {
     // Those indices have to be empty and opponent piece
     // has to be in rowNum + 1, colNum + 1
     // and rowNum + 1, colNum - 1 respectively
-    const jumpMoves = determinePossibleJumpMoves(rowNum, colNum);
+    const jumpMoves = determinePossibleJumpMoves(rowNum, colNum, isKing);
     possibleMoves = possibleMoves.concat(jumpMoves);
 
-    const regularMoves = determinePossibleRegularMoves(rowNum, colNum);
+    const regularMoves = determinePossibleRegularMoves(rowNum, colNum, isKing);
     possibleMoves = possibleMoves.concat(regularMoves);
 
     setMoveInfo({
       possibleMoves,
       selectedPieceInfo: {
+        isKing,
         x: rowNum,
         y: colNum,
       },
@@ -405,14 +408,18 @@ function App() {
                                 setRecentErrorMsg(err.message);
                               }
                             } else {
-                              await continuousJumpHelper(nextLoc.x, nextLoc.y);
+                              // eslint-disable-next-line
+                              await continuousJumpHelper(nextLoc.x, nextLoc.y, selectedPieceInfo.isKing);
                             }
                           } else {
                             determinePossibleMoves(rowNum, colNum);
                           }
                         } else if (moveDetails.moveType === typeOfMoves.JUMP) {
                           const { pieceLocation } = moveDetails;
-                          await continuousJumpHelper(pieceLocation.x, pieceLocation.y);
+                          const isKing = (board[pieceLocation.x][pieceLocation.y] === '11'
+                          || board[pieceLocation.x][pieceLocation.y] === '22');
+
+                          await continuousJumpHelper(pieceLocation.x, pieceLocation.y, isKing);
                         } else {
                           determinePossibleMoves(rowNum, colNum);
                         }
